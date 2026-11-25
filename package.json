@@ -1,0 +1,24 @@
+{
+  "name": "software-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Factoría de software: herramientas en TypeScript y flujos de GitHub Actions que ejecutan agentes de Claude Code.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "vitest run",
+    "tipos": "tsc --noEmit",
+    "flujos": "actionlint"
+  },
+  "dependencies": {
+    "@octokit/rest": "^22.0.1",
+    "ajv": "^8.20.0",
+    "minimatch": "^11.0.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
