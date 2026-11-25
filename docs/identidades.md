@@ -25,7 +25,7 @@ Referencias adelantadas, aún sin crear:
 
 ## Cómo crear cada credencial
 
-Prerrequisitos: `gh` instalado y con sesión iniciada (`gh auth status`) como `jordin-garcia`. En todos los comandos `gh secret set`, `gh` pide el valor por entrada estándar: pégalo cuando lo solicite y pulsa Enter (Ctrl+Z y Enter en PowerShell, Ctrl+D en bash). No pegues valores en el comando ni en el historial. También puedes usar la web: repositorio → Settings → Secrets and variables → Actions → New repository secret.
+Prerrequisitos: `gh` instalado y con sesión iniciada (`gh auth status`) como `jordin-garcia`. En los comandos `gh secret set NOMBRE -R ...` sin `--body`, `gh` muestra un aviso con la entrada enmascarada: pega el valor y pulsa Enter. No pegues valores en el comando ni en el historial. También puedes usar la web: repositorio → Settings → Secrets and variables → Actions → New repository secret.
 
 ### 1. Aplicación de GitHub (`FACTORY_APP_ID`, `FACTORY_APP_LOGIN`, `FACTORY_APP_PRIVATE_KEY`)
 
@@ -41,8 +41,12 @@ Prerrequisitos: `gh` instalado y con sesión iniciada (`gh auth status`) como `j
    ```
    gh variable set FACTORY_APP_ID -R jordin-garcia/software-factory
    gh variable set FACTORY_APP_LOGIN -R jordin-garcia/software-factory
-   gh secret set FACTORY_APP_PRIVATE_KEY -R jordin-garcia/software-factory < ruta/al/archivo.pem
    ```
+   La clave privada, en PowerShell:
+   ```
+   Get-Content -Raw ruta\al\archivo.pem | gh secret set FACTORY_APP_PRIVATE_KEY -R jordin-garcia/software-factory
+   ```
+   (Solo en bash: `gh secret set FACTORY_APP_PRIVATE_KEY -R jordin-garcia/software-factory < ruta/al/archivo.pem`.)
    (Sin `--body`, `gh variable set` pide el valor por consola.)
 10. Borra el `.pem` del disco cuando el secreto esté guardado.
 
