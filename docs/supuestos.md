@@ -118,14 +118,50 @@ No cambian: tareas 4, 10, 13 (salvo el paso de sandbox en su trabajo de agente),
 6. **Sandbox.** Se probó el `sysctl` global. El perfil AppArmor para `/usr/bin/bwrap`, que la documentación recomienda, no se probó. En un runner efímero, el `sysctl` parece aceptable.
 7. **Versión fijada.** `2.1.332` es `latest`; `stable` era `2.1.326`. Hay que decidir si se fija la versión probada o la estable.
 
-## Restos de los experimentos (borrar a mano)
+## Respuestas de la persona operadora (2026-11-26)
 
-| Resto | Qué hacer |
+Donde esta sección y "Cambios al plan" se contradicen, vale esta sección.
+
+| # | Decisión | Respuesta | Tareas que cambian |
+|---|---|---|---|
+| 1 | Términos de uso | Se sigue con el token de suscripción, **sin restricción de horario**, para medir hasta dónde alcanza. `FACTORY_HORARIO` se queda en `00-24`. La persona operadora asume el riesgo de la zona gris | Ninguna |
+| 2 | Cupo | **Propuesta A aceptada**: se guarda la utilización del cupo en cada resumen y se muestra en las métricas. **Propuesta B rechazada**: no hay umbral de parada | 9 y 19 (ver abajo) |
+| 3 | Copilot | En la configuración de Copilot de la cuenta no aparece "Code review". Se podría confirmar con la API (ver abajo). Ya no bloquea nada, por la respuesta 4 | Ninguna |
+| 4 | Revisor externo | **Vacío por ahora**: `revisorExterno: "ninguno"`. Se valoró una segunda pasada de Claude con otro modelo y se descartó | 6, 15 y 20 (ver abajo) |
+| 5 | Credenciales | Client ID de la aplicación recibido; se guarda como variable `FACTORY_APP_CLIENT_ID`. `FACTORY_ADMIN_TOKEN` **no caduca**, por decisión de la persona operadora | 6, 7 y 12 (ya previsto); `docs/identidades.md` |
+| 6 | Sandbox | **Perfil de AppArmor para `/usr/bin/bwrap`**, no el `sysctl` global | 12 (ver abajo) |
+| 7 | Versión de Claude Code | **Versión fija, con actualización semanal**: se parte de `2.1.332`. Un flujo semanal prueba la última versión y, si pasa, abre un PR para subirla. No se instala `latest` sin fijar | 12 (ver abajo) |
+| 8 | Despachador | **Fijado por SHA**, no `@main` | 6, 7 y 20 (ver abajo) |
+| 9 | Restos de experimentos | Se borran siempre en cuanto dejan de hacer falta. La lista se confirma antes de borrar, porque no se puede deshacer. Regla añadida a `AGENTS.md` | Ninguna |
+
+**Cambios en las tareas.**
+
+- **Tarea 6.** En el `.factory/config.json` de la plantilla, `"revisorExterno": "ninguno"`; `modelos` no cambia. En `factory.yml`, el `uses:` apunta a `despachador.yml@__SHA_FACTORY__`, y ese mismo SHA se pasa como entrada `version_factory`. `tests/flujos.test.ts` ya no admite excepciones: todo `uses:` es un hash de 40 caracteres o una ruta local. `.github/copilot-instructions.md` sale de la lista de archivos.
+- **Tarea 7.** `crear-proyecto.ts` sustituye `__SHA_FACTORY__` por el commit de la factory que ejecuta el flujo (`GITHUB_SHA` de `nuevo-proyecto.yml`). Paso nuevo: `scripts/cli/actualizar-despachador.ts` y el flujo `actualizar-despachador.yml` (solo `workflow_dispatch`, entrada `sha`, usa `FACTORY_ADMIN_TOKEN`, porque la aplicación no tiene Workflows). Para cada proyecto de `proyectos.json`, abre un PR que cambia el SHA de `factory.yml`. Ese PR toca `.github/**`, así que es de riesgo alto y lo aprueba una persona. La lógica de sustitución va en `scripts/lib/proyecto.ts` con su test.
+- **Tarea 9.** `extraerResultado`, o una función nueva `extraerCupo`, lee el `rate_limit_event`: `rate_limit_info.unifiedWindows.five_hour.utilization` y `seven_day.utilization`, valores de 0 a 1, más sus `resetsAt`. `construirResumen` los guarda en `datos.cupo = { cincoHoras, sieteDias, reiniciaCincoHoras, reiniciaSieteDias }`, o `null` si no hay evento. Ojo: el evento llega **al principio** de la ejecución, así que mide el cupo de antes de ese rol, no lo que gastó. Test nuevo con `stream-ok.jsonl`: `cincoHoras` es `0.13` y `sieteDias` es `0.22`.
+- **Tarea 12.** Paso previo al Step 6, en una rama temporal de la factory (`experimento/apparmor`), que ya tiene `CLAUDE_CODE_OAUTH_TOKEN`; la rama y sus runs se borran al terminar. Consiste en probar el perfil de AppArmor para `bwrap` que recomienda la documentación de [sandboxing](https://code.claude.com/docs/en/sandboxing), sin el `sysctl`, y comprobar otra vez que `example.com` falla y `api.github.com` pasa. Si funciona, los trabajos de agente instalan ese perfil (`apparmor_parser -r`) en lugar del `sysctl`. Si no funciona, se para y se consulta. El despachador clona la factory en `.factory-src` en el SHA de `inputs.version_factory`, no en `main`. Si no, fijar el flujo no fija los scripts.
+- **Tarea 12, actualización semanal de Claude Code.** Archivos: `scripts/lib/version.ts`, con `decidirActualizacion(actual, ultima)` y su test (compara versiones semánticas y solo propone subir); `scripts/cli/probar-version.ts`; y el flujo `.github/workflows/actualizar-claude-code.yml`, con `schedule` semanal y `workflow_dispatch`. El flujo tiene dos trabajos:
+  1. `probar`: `contents: read` y sin token de escritura. Lee `latest` con `npm view @anthropic-ai/claude-code dist-tags.latest`. Si no es más nueva que `VERSION_CLAUDE_CODE`, termina. Si lo es, instala esa versión, ejecuta `npm test` y lanza una prueba mínima con el sandbox: `claude -p "Responde solo OK" --max-turns 1 --model haiku --output-format stream-json --verbose < /dev/null`. Comprueba con `leerStream`, `extraerResultado`, `clasificarSalida` y la lectura del cupo que el resultado es `termino` y que hay `rate_limit_event`. No imprime la salida.
+  2. `proponer`: usa el token de la aplicación. Si `probar` pasó, abre o actualiza el PR `factory/claude-code-<versión>`, que solo cambia `VERSION_CLAUDE_CODE`; lo fusiona una persona. Si falló, abre un issue con el paso que falló, nunca con la salida.
+
+  Los productos reciben la versión nueva cuando se actualiza el SHA del despachador (Tarea 7).
+- **Tarea 15.** Se implementan `revisor-externo/tipos.ts` e `indice.ts`, y `obtenerRevisorExterno('ninguno')` devuelve `null`. `copilot.ts` se aplaza. Con `ninguno`, `revisar-externo` no se ejecuta y la revisión dice "sin revisor externo". El hueco queda listo para conectar después Copilot, otro proveedor o una segunda pasada de Claude.
+- **Tarea 19.** `Metricas` añade `cupo: { ultimoCincoHoras: number | null; ultimoSieteDias: number | null; ejecucionesPorRol: Record<string, number> }`, sacado de `datos.cupo` de la última entrada y del recuento por rol. Una estimación del gasto por rol, a partir de la diferencia entre ejecuciones seguidas de la misma ventana, solo se añade si los datos lo permiten, porque el uso interactivo la contamina.
+- **Tarea 20.** `docs/operacion.md` explica cómo actualizar el SHA del despachador en todos los productos, cómo aceptar el PR semanal de Claude Code y cómo conectar un revisor externo al hueco vacío.
+
+**Cómo confirmar Copilot (decisión 3).** Desde octubre de 2026 hay un endpoint propio: `POST /repos/{owner}/{repo}/pulls/{pull_number}/copilot-code-review` ([REST](https://docs.github.com/en/rest/pulls/copilot-code-review), [changelog](https://github.blog/changelog/2026-10-02-copilot-code-review-api-support-and-new-default-effort-level/)). A diferencia de `gh pr edit --add-reviewer`, no termina en silencio: devuelve 201 si la revisión arranca, o 422 con un `failure_reason` si la cuenta o el repo no pueden usarla, por ejemplo "no quota remaining". La documentación pública no aclara si el plan Student la incluye: la [tabla de planes](https://docs.github.com/en/copilot/get-started/plans) lista el plan Student, pero la [configuración](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) solo nombra Pro, Pro+ y Max. Que no aparezca "Code review" en tu configuración apunta a que no la tienes. Para confirmarlo hace falta un PR abierto. Si devuelve 201, la revisión gasta créditos de IA: entre unos 0,25 y 1,50 USD según el nivel de esfuerzo.
+
+## Restos de los experimentos
+
+Estado tras la limpieza del 2026-11-26:
+
+| Resto | Estado |
 |---|---|
-| Repo [`jordin-garcia/factory-desechable-45559055197`](https://github.com/jordin-garcia/factory-desechable-45559055197): público, con protección, `PRUEBA_SECRETO`, `PRUEBA_VARIABLE` y la rama `prueba-flujo` | Borrar el repositorio |
-| Proyecto [`users/jordin-garcia/projects/3`](https://github.com/users/jordin-garcia/projects/3) "factory-prueba-tablero": privado, con el campo "Etapa" | Borrar el proyecto |
-| [Issue #4](https://github.com/jordin-garcia/factory-sandbox/issues/4) de `factory-sandbox`, creado por la aplicación | Cerrarlo, o se borra con el repo |
-| Repo [`jordin-garcia/factory-sandbox`](https://github.com/jordin-garcia/factory-sandbox): flujos de experimento en `main`, ramas `experimento/paso7-app`, `paso9-admins` y `paso11-copilot`, PR #1 a #3 | Borrarlo cuando ya no haga falta repetir ningún experimento. Mientras se conserve, guarda copias de los secretos de la factory: conviene borrarlos de él en cuanto no hagan falta |
-| Logs públicos de los runs del sandbox (sin secretos) y los runs 45556593829 y 45556596244 de `ci` de `software-factory` (rama temporal ya borrada) | Opcional |
+| Repo `jordin-garcia/factory-desechable-45559055197`: público, con protección, `PRUEBA_SECRETO`, `PRUEBA_VARIABLE` y la rama `prueba-flujo` | Borrado por la persona operadora |
+| Proyecto `users/jordin-garcia/projects/3` "factory-prueba-tablero" | Borrado |
+| Issue #4 de `factory-sandbox`, creado por la aplicación | Borrado |
+| Secretos (`CLAUDE_CODE_OAUTH_TOKEN`, `FACTORY_ADMIN_TOKEN`, `FACTORY_TABLERO_TOKEN`, `FACTORY_APP_PRIVATE_KEY`) y variables (`FACTORY_APP_ID`, `FACTORY_APP_LOGIN`) de `factory-sandbox` | Borrados. Los experimentos que quedan se hacen en ramas temporales de la factory |
+| Runs 45556593829 y 45556596244 de `ci` de `software-factory` (rama `experimento/reutilizable`, ya borrada) | Borrados |
+| Repo [`jordin-garcia/factory-sandbox`](https://github.com/jordin-garcia/factory-sandbox): flujos de experimento en `main`, ramas `experimento/paso7-app`, `paso9-admins` y `paso11-copilot`, PR #1 a #3 y los logs de sus runs | Se conserva sin secretos: sus runs y PR son la evidencia enlazada en este documento. Borrarlo rompería esos enlaces |
 
-Ya están limpios: los artefactos, las ramas `experimento/b2-*`, la rama `experimento/reutilizable` de la factory, la protección y `allow_auto_merge` del sandbox.
+Ya estaban limpios: los artefactos, las ramas `experimento/b2-*`, la rama `experimento/reutilizable` de la factory, la protección y `allow_auto_merge` del sandbox.

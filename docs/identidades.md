@@ -10,10 +10,11 @@ Todo vive en el repositorio de la factory (`jordin-garcia/software-factory`), co
 |---|---|---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | Secreto | Autentica las peticiones al modelo con la suscripción. No da acceso a GitHub. | Trabajos de agente (planificador, implementador, revisor). También se copia a los repos de producto. | Cada año: repetir `claude setup-token` y reemplazar el secreto. |
 | `FACTORY_APP_PRIVATE_KEY` | Secreto | Firma el token de la aplicación de la factory (Contents, Issues, Pull requests, Checks y Commit statuses en lectura y escritura; Metadata y Actions en lectura). Sin Administration, sin Workflows. | Solo trabajos de publicación y reconciliación. Nunca los de agente. Se copia a los repos de producto. | Generar una clave nueva en la aplicación, actualizar el secreto, borrar la clave vieja. |
-| `FACTORY_ADMIN_TOKEN` | Secreto | PAT de grano fino de la cuenta personal: Administration, Contents, Secrets, Variables, Workflows y Pages en escritura; Metadata en lectura. Crea repositorios, protege ramas y escribe secretos. | `nuevo-proyecto.yml` (Tarea 7) y los experimentos de la Tarea 3. | Caduca (máximo de los tokens de grano fino): crear uno nuevo antes de la fecha y reemplazar el secreto. |
+| `FACTORY_ADMIN_TOKEN` | Secreto | PAT de grano fino de la cuenta personal: Administration, Contents, Secrets, Variables, Workflows y Pages en escritura; Metadata en lectura. Crea repositorios, protege ramas y escribe secretos. | `nuevo-proyecto.yml` y `actualizar-despachador.yml` (Tarea 7), y los experimentos de la Tarea 3. | **No caduca** (decisión de la persona operadora, 2026-11-26). Rotar a mano si se sospecha una filtración o se copió fuera de este repositorio: crear uno nuevo, reemplazar el secreto y revocar el viejo. |
 | `FACTORY_TABLERO_TOKEN` | Secreto | PAT clásico solo con el alcance `project`. Sincroniza el tablero (Projects v2 de la cuenta). | `tablero.yml` (Tarea 8). | Elegir una caducidad al crearlo; renovarlo antes y reemplazar el secreto. |
 | `FACTORY_APP_ID` | Variable | Identifica la aplicación. No es secreto. | Trabajos de publicación; repos de producto. | Solo cambia si se recrea la aplicación. |
 | `FACTORY_APP_LOGIN` | Variable | Login del bot, formato `<slug>[bot]`. Se usa para comprobar el autor de los marcadores ocultos. | Todos los que leen marcadores; repos de producto. | Solo cambia si se recrea la aplicación. |
+| `FACTORY_APP_CLIENT_ID` | Variable | Client ID de la aplicación (empieza por `Iv`). No es secreto. `actions/create-github-app-token` lo pide desde la v3.4.0 en lugar de `app-id`. | Todos los trabajos que generan el token de la aplicación; repos de producto. | Solo cambia si se recrea la aplicación. |
 | `FACTORY_ACTIVA` | Variable | Interruptor general: `true` o `false`. | Todos los flujos. | No rota. Valor inicial `true`. |
 | `FACTORY_HORARIO` | Variable | Franja horaria de trabajo. | Planificación y reconciliación. | No rota. Valor inicial `00-24`. |
 | `FACTORY_ZONA_HORARIA` | Variable | Zona de `FACTORY_HORARIO`. | Igual que la anterior. | No rota. Valor inicial `UTC`. |
@@ -34,12 +35,13 @@ Prerrequisitos: `gh` instalado y con sesión iniciada (`gh auth status`) como `j
 3. Webhook: desmarca Active (sin webhooks).
 4. Repository permissions: Contents, Issues, Pull requests, Checks y Commit statuses en Read and write; Metadata y Actions en Read-only. Deja todo lo demás en No access (en especial Administration y Workflows). No pidas permisos de cuenta ni de organización.
 5. Where can this GitHub App be installed: Only on this account. Create GitHub App.
-6. En la página de la aplicación: copia el App ID. El slug aparece en la URL pública (`github.com/apps/<slug>`); el login es `<slug>[bot]`.
+6. En la página de la aplicación: copia el App ID y el Client ID. El slug aparece en la URL pública (`github.com/apps/<slug>`); el login es `<slug>[bot]`.
 7. Install App (menú lateral) → tu cuenta → All repositories → Install.
 8. De vuelta en la aplicación: Private keys → Generate a private key. Se descarga un `.pem`.
-9. Guarda los tres valores:
+9. Guarda los cuatro valores:
    ```
    gh variable set FACTORY_APP_ID -R jordin-garcia/software-factory
+   gh variable set FACTORY_APP_CLIENT_ID -R jordin-garcia/software-factory
    gh variable set FACTORY_APP_LOGIN -R jordin-garcia/software-factory
    ```
    La clave privada, en PowerShell:
@@ -64,7 +66,7 @@ Avisos documentados:
 ### 3. `FACTORY_ADMIN_TOKEN` (grano fino)
 
 1. Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.
-2. Resource owner: tu cuenta personal. Expiration: la máxima permitida; anota la fecha.
+2. Resource owner: tu cuenta personal. Expiration: la que decida la persona operadora (hoy, sin caducidad; ver la tabla). Si eliges una fecha, anótala.
 3. Repository access: All repositories (un repo creado después debe quedar cubierto).
 4. Repository permissions, en Read and write: Administration, Contents, Secrets, Variables, Workflows, Pages. Metadata en Read-only. Si aparece el permiso de crear repositorios, concédelo.
 5. Generate token y guárdalo: `gh secret set FACTORY_ADMIN_TOKEN -R jordin-garcia/software-factory`.
@@ -93,7 +95,7 @@ gh variable set FACTORY_ZONA_HORARIA -R jordin-garcia/software-factory --body UT
 
 - Ninguna credencial se imprime en los logs: ni secretos, ni variables de entorno, ni salidas completas.
 - Ningún trabajo de agente recibe `FACTORY_ADMIN_TOKEN` ni `FACTORY_TABLERO_TOKEN`, ni un token de GitHub con escritura. Estos dos viven solo en el repo de la factory y no salen de él.
-- Los repos de producto reciben únicamente `CLAUDE_CODE_OAUTH_TOKEN`, `FACTORY_APP_PRIVATE_KEY`, `FACTORY_APP_ID` y `FACTORY_APP_LOGIN`.
+- Los repos de producto reciben únicamente `CLAUDE_CODE_OAUTH_TOKEN`, `FACTORY_APP_PRIVATE_KEY`, `FACTORY_APP_ID`, `FACTORY_APP_CLIENT_ID` y `FACTORY_APP_LOGIN`.
 - La aplicación no tiene Workflows a propósito: los agentes no pueden cambiar `.github/**`.
-- Calendario de rotación: el token de grano fino y el del tablero caducan en su fecha; `claude setup-token` caduca al año. Anota las tres fechas al crearlos y renueva antes.
+- Calendario de rotación: el token del tablero caduca en su fecha y `claude setup-token` caduca al año; anota las dos fechas al crearlos y renueva antes. El token de grano fino no caduca: se rota a mano (ver la tabla).
 - Nunca se escribe un valor real en este documento, en issues ni en commits.

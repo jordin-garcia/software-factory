@@ -34,6 +34,7 @@ La factory es un conjunto de herramientas en TypeScript y flujos de GitHub Actio
 - Test antes que código.
 - Un commit por tarea del plan.
 - Identificadores, mensajes y documentación en español.
+- Los restos de experimentos (repos, ramas, proyectos, issues y secretos copiados) se borran en cuanto dejan de hacer falta. Antes se confirma la lista con la persona operadora.
 
 ## Qué no se hace sin preguntar
 
