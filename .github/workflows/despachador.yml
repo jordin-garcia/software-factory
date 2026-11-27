@@ -1,0 +1,46 @@
+name: despachador
+
+# Flujo reutilizable al que llama el factory.yml de cada proyecto.
+# Por ahora solo declara su contrato: entradas y secretos. Los roles llegan en la Tarea 12.
+on:
+  workflow_call:
+    inputs:
+      version_factory:
+        description: Commit de la factory al que está fijado el proyecto
+        required: true
+        type: string
+      app_id:
+        required: true
+        type: string
+      app_client_id:
+        required: true
+        type: string
+      app_login:
+        required: true
+        type: string
+      activa:
+        required: true
+        type: string
+      horario:
+        required: true
+        type: string
+      zona_horaria:
+        required: true
+        type: string
+      aprobacion_delegada:
+        required: true
+        type: string
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+      FACTORY_APP_PRIVATE_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  sin-roles:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "El despachador todavía no tiene roles."

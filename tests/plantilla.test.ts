@@ -115,9 +115,9 @@ describe('flujos de la plantilla', () => {
   test('ci.yml exige el 80% de cobertura en las líneas del diff', () =>
     expect(leer('.github/workflows/ci.yml')).toMatch(/diff-cover .*--compare-branch=origin\/main .*--fail-under=80/));
 
-  test('desplegar.yml publica en Pages al fusionar en main, sin secretos', () => {
+  test('desplegar.yml publica en Pages al fusionar en main o a mano, sin secretos', () => {
     const d = leerYaml('.github/workflows/desplegar.yml');
-    expect(Object.keys(d.on)).toEqual(['push']);
+    expect(Object.keys(d.on).sort()).toEqual(['push', 'workflow_dispatch']);
     expect(d.on.push.branches).toEqual(['main']);
     expect(d.permissions).toMatchObject({ pages: 'write', 'id-token': 'write' });
     expect(leer('.github/workflows/desplegar.yml')).not.toMatch(/secrets\./);

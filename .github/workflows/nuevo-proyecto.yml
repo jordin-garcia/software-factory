@@ -1,0 +1,50 @@
+name: nuevo-proyecto
+
+# Crea un proyecto desde la plantilla. Lanzarlo a mano es la aprobación.
+# Es el único flujo con el token de administración, y ese token nunca sale de este repositorio.
+on:
+  workflow_dispatch:
+    inputs:
+      nombre:
+        description: Nombre del repositorio (minúsculas, dígitos y guiones)
+        required: true
+        type: string
+      descripcion:
+        description: Una frase sobre el proyecto
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nuevo-proyecto
+  cancel-in-progress: false
+
+jobs:
+  crear:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Crear el proyecto
+        # Las entradas van por variables de entorno, nunca interpoladas en el script.
+        env:
+          NOMBRE: ${{ inputs.nombre }}
+          DESCRIPCION: ${{ inputs.descripcion }}
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          FACTORY_APP_PRIVATE_KEY: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}
+          FACTORY_APP_ID: ${{ vars.FACTORY_APP_ID }}
+          FACTORY_APP_CLIENT_ID: ${{ vars.FACTORY_APP_CLIENT_ID }}
+          FACTORY_APP_LOGIN: ${{ vars.FACTORY_APP_LOGIN }}
+          FACTORY_ACTIVA: ${{ vars.FACTORY_ACTIVA }}
+          FACTORY_HORARIO: ${{ vars.FACTORY_HORARIO }}
+          FACTORY_ZONA_HORARIA: ${{ vars.FACTORY_ZONA_HORARIA }}
+        run: npx tsx scripts/cli/crear-proyecto.ts --nombre "$NOMBRE" --descripcion "$DESCRIPCION"

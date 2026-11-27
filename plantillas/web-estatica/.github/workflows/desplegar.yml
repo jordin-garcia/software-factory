@@ -1,9 +1,11 @@
 name: desplegar
 
 # Publica el sitio en GitHub Pages al fusionar en main. Sin agentes y sin secretos guardados.
+# workflow_dispatch permite el primer despliegue al crear el proyecto y volver a desplegar a mano.
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read

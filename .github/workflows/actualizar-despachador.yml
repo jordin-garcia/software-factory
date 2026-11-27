@@ -1,0 +1,36 @@
+name: actualizar-despachador
+
+# Abre en cada proyecto un PR que fija su factory.yml a un commit de main de la factory.
+# Usa el token de administración porque la aplicación no tiene el permiso Workflows.
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit de main de la factory (vacío = el último)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: actualizar-despachador
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Abrir los PR
+        env:
+          SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ secrets.FACTORY_ADMIN_TOKEN }}
+        run: npx tsx scripts/cli/actualizar-despachador.ts --sha "${SHA:-$GITHUB_SHA}"
