@@ -2,12 +2,14 @@ import { Octokit } from '@octokit/rest';
 import type { ArchivoCambiado } from './clasificador.js';
 import type { Comentario, Permiso } from './tipos.js';
 
-export interface Issue { numero: number; titulo: string; cuerpo: string; autor: string; etiquetas: string[]; abierto: boolean; esPr: boolean }
+export interface Issue { numero: number; nodoId: string; titulo: string; cuerpo: string; autor: string; etiquetas: string[]; abierto: boolean; esPr: boolean }
 export interface Revision { autor: string; estado: string; sha: string; fecha: string }
 
 /** Lo que los envoltorios necesitan de GitHub. Se sustituye por un objeto falso en los tests. */
 export interface ClienteGitHub {
   leerIssue(numero: number): Promise<Issue>;
+  /** Todos los issues del repositorio, abiertos y cerrados, sin los PR. */
+  listarIssues(): Promise<Issue[]>;
   leerComentarios(numero: number): Promise<Comentario[]>;
   leerArchivosPr(numero: number): Promise<ArchivoCambiado[]>;
   leerRevisiones(numero: number): Promise<Revision[]>;
@@ -24,6 +26,24 @@ export function aArchivoCambiado(f: { filename: string; previous_filename?: stri
   const archivo: ArchivoCambiado = { ruta: f.filename, adiciones: f.additions, eliminaciones: f.deletions };
   if (f.previous_filename) archivo.rutaAnterior = f.previous_filename;
   return archivo;
+}
+
+type EtiquetaApi = string | { name?: string | null };
+
+export function aIssue(d: {
+  number: number; node_id: string; title: string; body?: string | null; user?: { login: string } | null;
+  state: string; labels: EtiquetaApi[]; pull_request?: unknown;
+}): Issue {
+  return {
+    numero: d.number,
+    nodoId: d.node_id,
+    titulo: d.title,
+    cuerpo: d.body ?? '',
+    autor: d.user?.login ?? '',
+    etiquetas: d.labels.map(l => (typeof l === 'string' ? l : l.name ?? '')).filter(Boolean),
+    abierto: d.state === 'open',
+    esPr: d.pull_request !== undefined,
+  };
 }
 
 export function aComentario(c: { user?: { login: string } | null; body?: string | null; created_at: string }): Comentario {
@@ -53,15 +73,11 @@ export function crearCliente(token: string, repositorio: string): ClienteGitHub 
   return {
     async leerIssue(numero) {
       const { data } = await gh.rest.issues.get({ ...base, issue_number: numero });
-      return {
-        numero: data.number,
-        titulo: data.title,
-        cuerpo: data.body ?? '',
-        autor: data.user?.login ?? '',
-        etiquetas: data.labels.map(l => (typeof l === 'string' ? l : l.name ?? '')).filter(Boolean),
-        abierto: data.state === 'open',
-        esPr: data.pull_request !== undefined,
-      };
+      return aIssue(data);
+    },
+    async listarIssues() {
+      const datos = await gh.paginate(gh.rest.issues.listForRepo, { ...base, state: 'all', per_page: 100 });
+      return datos.map(aIssue).filter(i => !i.esPr);
     },
     async leerComentarios(numero) {
       const datos = await gh.paginate(gh.rest.issues.listComments, { ...base, issue_number: numero, per_page: 100 });

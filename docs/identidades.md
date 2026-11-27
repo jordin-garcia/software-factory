@@ -21,7 +21,7 @@ Todo vive en el repositorio de la factory (`jordin-garcia/software-factory`), co
 
 Referencias adelantadas, aún sin crear:
 
-- `FACTORY_TABLERO`: número del proyecto (tablero). Se fija en la Tarea 8.
+- `FACTORY_TABLERO`: número del proyecto (tablero). Se fija en la Tarea 8. Mientras esté vacía, `tablero.yml` no hace nada.
 - `FACTORY_APROBACION_DELEGADA`: `false` al inicio. Se fija en cada repo de producto en la Tarea 7.
 
 ## Cómo crear cada credencial

@@ -1,0 +1,36 @@
+name: tablero
+
+# Sincroniza la columna Etapa del tablero con la etiqueta de estado de cada issue de los proyectos registrados.
+# Es central, en este repositorio, para que su credencial no salga de aquí.
+# Usa FACTORY_TABLERO_TOKEN (PAT clásico solo con `project`): la aplicación no puede escribir en Projects de la cuenta.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tablero
+  cancel-in-progress: false
+
+jobs:
+  sincronizar:
+    # Hasta que exista el tablero, el flujo programado no hace nada en vez de fallar cada 15 minutos.
+    if: vars.FACTORY_TABLERO != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Sincronizar el tablero
+        env:
+          GH_TOKEN: ${{ secrets.FACTORY_TABLERO_TOKEN }}
+          FACTORY_TABLERO: ${{ vars.FACTORY_TABLERO }}
+        run: npx tsx scripts/cli/tablero.ts

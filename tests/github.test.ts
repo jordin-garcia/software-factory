@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { aArchivoCambiado, aComentario, aPermiso } from '../scripts/lib/github.js';
+import { aArchivoCambiado, aComentario, aIssue, aPermiso } from '../scripts/lib/github.js';
 
 describe('aPermiso', () => {
   test.each([
@@ -25,4 +25,20 @@ describe('aComentario', () => {
   test('un comentario sin autor ni cuerpo no rompe nada', () =>
     expect(aComentario({ user: null, created_at: '2026-01-01T00:00:00Z' }))
       .toEqual({ autor: '', cuerpo: '', fecha: '2026-01-01T00:00:00Z' }));
+});
+
+describe('aIssue', () => {
+  const base = {
+    number: 7, node_id: 'I_kw7', title: 't', body: null, user: { login: 'ana' }, state: 'closed',
+    labels: ['suelta', { name: 'factory:hecha' }, { name: null }],
+  };
+
+  test('convierte un issue con su id de nodo y sus etiquetas', () =>
+    expect(aIssue(base)).toEqual({
+      numero: 7, nodoId: 'I_kw7', titulo: 't', cuerpo: '', autor: 'ana',
+      etiquetas: ['suelta', 'factory:hecha'], abierto: false, esPr: false,
+    }));
+
+  test('reconoce un PR', () =>
+    expect(aIssue({ ...base, state: 'open', pull_request: {} })).toMatchObject({ abierto: true, esPr: true }));
 });
