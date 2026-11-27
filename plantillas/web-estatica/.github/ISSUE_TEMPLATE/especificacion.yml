@@ -1,0 +1,32 @@
+name: Especificación
+description: Lo que la factory debe construir. Cuando esté completa, ponle la etiqueta factory:lista.
+title: "Especificación: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        La factory propondrá un plan en este issue. Revísalo y apruébalo con la etiqueta `factory:plan-aprobado`, o comenta qué cambiar y vuelve a poner `factory:lista`.
+  - type: textarea
+    id: que
+    attributes:
+      label: Qué debe hacer
+      description: El comportamiento que quieres, desde el punto de vista de quien usa la aplicación.
+    validations:
+      required: true
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: Una lista de comprobaciones concretas. La tarea está hecha cuando se cumplen todas.
+      placeholder: |
+        - Al pulsar "Añadir", la tarea aparece al final de la lista.
+        - Con la lista vacía se ve el texto "Sin tareas".
+    validations:
+      required: true
+  - type: textarea
+    id: no-tocar
+    attributes:
+      label: Qué no debe tocar
+      description: Partes del proyecto que deben quedar como están.
+    validations:
+      required: true

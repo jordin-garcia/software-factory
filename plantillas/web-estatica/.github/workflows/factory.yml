@@ -1,0 +1,47 @@
+name: factory
+
+# Conecta este repositorio con la factory. Toda la lógica vive en el despachador,
+# fijado al commit de la factory con el que se creó o actualizó el proyecto.
+# pull_request_target hace que este archivo se lea siempre de main, no de la rama del PR.
+on:
+  issues:
+    types: [labeled]
+  pull_request_target:
+    types: [opened, synchronize, closed]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+  status:
+  schedule:
+    - cron: '*/30 * * * *'
+
+# El token de Actions solo lee. Lo que escribe en GitHub lo hace el token de la aplicación de la factory.
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+  checks: read
+  statuses: read
+
+jobs:
+  despachar:
+    # Los PR y los runs que vienen de un fork no ejecutan ningún trabajo de la factory ni reciben secretos.
+    if: >-
+      (github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event.workflow_run == null || github.event.workflow_run.head_repository.full_name == github.repository)
+    uses: __PROPIETARIO__/__REPO_FACTORY__/.github/workflows/despachador.yml@__SHA_FACTORY__
+    with:
+      version_factory: __SHA_FACTORY__
+      app_id: ${{ vars.FACTORY_APP_ID }}
+      app_client_id: ${{ vars.FACTORY_APP_CLIENT_ID }}
+      app_login: ${{ vars.FACTORY_APP_LOGIN }}
+      activa: ${{ vars.FACTORY_ACTIVA }}
+      horario: ${{ vars.FACTORY_HORARIO }}
+      zona_horaria: ${{ vars.FACTORY_ZONA_HORARIA }}
+      aprobacion_delegada: ${{ vars.FACTORY_APROBACION_DELEGADA }}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      FACTORY_APP_PRIVATE_KEY: ${{ secrets.FACTORY_APP_PRIVATE_KEY }}

@@ -1,0 +1,8 @@
+{
+  "rutasSensibles": [],
+  "maxLineasDiff": 400,
+  "maxRondas": 3,
+  "revisorExterno": "ninguno",
+  "modelos": { "planificador": "opus", "implementador": "sonnet", "revisor": "opus" },
+  "urlDespliegue": "https://__PROPIETARIO__.github.io/__NOMBRE__/"
+}

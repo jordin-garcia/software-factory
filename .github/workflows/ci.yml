@@ -27,3 +27,57 @@ jobs:
       - run: npm run tipos
       - run: npm test
       - run: npm run flujos
+
+  # Renderiza la plantilla con valores de prueba y le pasa las comprobaciones que tendrá cada proyecto.
+  plantilla:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            plantillas/web-estatica/package-lock.json
+      - run: npm ci
+      - name: Renderizar la plantilla
+        run: >-
+          npx tsx scripts/cli/copiar-plantilla.ts --plantilla web-estatica --destino "$RUNNER_TEMP/plantilla"
+          --propietario prueba --nombre proyecto-prueba --descripcion "Proyecto de prueba de la plantilla"
+          --repo-factory software-factory --sha-factory "$GITHUB_SHA"
+      - run: npm ci
+        working-directory: ${{ runner.temp }}/plantilla
+      - run: npm run verificar
+        working-directory: ${{ runner.temp }}/plantilla
+      - run: npx playwright install --with-deps chromium
+        working-directory: ${{ runner.temp }}/plantilla
+      - run: npm run e2e
+        working-directory: ${{ runner.temp }}/plantilla
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - run: pip install semgrep==1.187.0
+      - name: Semgrep
+        run: semgrep scan --config p/javascript --config p/typescript --config p/react --error --metrics=off
+        working-directory: ${{ runner.temp }}/plantilla
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: stable
+          cache: false
+      - name: Instalar OSV-Scanner, Gitleaks y actionlint
+        run: |
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.7.1
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+      - name: OSV-Scanner
+        run: osv-scanner scan source -r .
+        working-directory: ${{ runner.temp }}/plantilla
+      - name: Gitleaks
+        run: gitleaks dir --redact --no-banner .
+        working-directory: ${{ runner.temp }}/plantilla
+      - name: actionlint sobre los flujos renderizados
+        run: actionlint .github/workflows/*.yml
+        working-directory: ${{ runner.temp }}/plantilla
