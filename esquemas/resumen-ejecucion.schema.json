@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "resumen-ejecucion.schema.json",
+  "title": "Resumen de ejecución",
+  "description": "Lo que deja cada ejecución de un rol. Nunca lleva el texto ni la salida del agente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proyecto", "issue", "tipo", "rol", "modelo", "inicio", "fin", "duracionSeg", "resultado",
+    "estadoResultante", "turnos", "costoEstimadoUsd", "herramientas", "permisosDenegados", "urlEjecucion"
+  ],
+  "properties": {
+    "proyecto": { "type": "string", "minLength": 1 },
+    "issue": { "type": "integer", "minimum": 1 },
+    "tipo": { "enum": ["especificacion", "tarea"] },
+    "rol": { "enum": ["planificador", "implementador", "revisor", "crear-tareas", "puerta", "verificador", "reconciliador"] },
+    "modelo": { "type": ["string", "null"] },
+    "inicio": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}" },
+    "fin": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}" },
+    "duracionSeg": { "type": "integer", "minimum": 0 },
+    "resultado": { "enum": ["termino", "fallo", "bloqueada", "en-pausa"] },
+    "estadoResultante": { "type": "string" },
+    "turnos": { "type": "integer", "minimum": 0 },
+    "costoEstimadoUsd": { "type": ["number", "null"], "minimum": 0 },
+    "herramientas": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    },
+    "permisosDenegados": { "type": "array", "items": { "type": "string" } },
+    "urlEjecucion": { "type": "string" },
+    "datos": {
+      "type": "object",
+      "properties": {
+        "cupo": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["cincoHoras", "sieteDias", "reiniciaCincoHoras", "reiniciaSieteDias", "rechazado"],
+              "properties": {
+                "cincoHoras": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+                "sieteDias": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+                "reiniciaCincoHoras": { "type": ["string", "null"] },
+                "reiniciaSieteDias": { "type": ["string", "null"] },
+                "rechazado": { "type": "boolean" }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
